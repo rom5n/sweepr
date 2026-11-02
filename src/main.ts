@@ -13,7 +13,7 @@ import { logoDefs } from './logo';
 import { unsafeSVG } from 'lit-html/directives/unsafe-svg.js';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { IN_TAURI } from './api';
-import { scan as runScan, liveStats, clean as runClean, pauseClean, cancelClean, queueCompact, startupApply, startupUndo, startupList, settingsLoad, settingsSave, setWeekly, onTray, pickFolder, type Target, type Impact, type ScanResult, type CleanItem, type Applied } from './api';
+import { scan as runScan, liveStats, clean as runClean, pauseClean, cancelClean, queueCompact, startupApply, startupUndo, startupList, settingsLoad, settingsSave, setWeekly, onTray, pickFolder, appVersion, latestRelease, isNewer, openUrl, type Target, type Impact, type ScanResult, type CleanItem, type Applied } from './api';
 
 // ---------- static ----------
 const SQ = sqPath(80, 80, 66, 4, 200);
@@ -35,7 +35,7 @@ const CAT_META = [
 
 
 // ---------- state ----------
-type Cfg = { age: number; bin: boolean; restore: boolean; dry: boolean; weekly: boolean; day: string; time: string; excludes: string[]; hc: boolean; cvd: boolean };
+type Cfg = { updates: boolean; age: number; bin: boolean; restore: boolean; dry: boolean; weekly: boolean; day: string; time: string; excludes: string[]; hc: boolean; cvd: boolean };
 type RunItem = CleanItem;
 type Run = { items: RunItem[]; paused: boolean; dry: boolean; freeBefore: number; startedAt: number; est: number; freed?: number; measured?: number; freeAfter?: number; endedAt?: number };
 
@@ -76,9 +76,11 @@ const S = {
   /** Admin tasks queued for the next admin batch (WSL disk compaction). */
   tasks: [] as { id: string; path: string }[],
   canUndo: false,
+  version: '',
+  update: null as { version: string; url: string } | null,
   stBusy: false,
   toast: '' as string,
-  cfg: { age: 3, bin: true, restore: true, dry: false, weekly: false, day: 'SUN', time: '21:00', excludes: [] as string[], hc: !!q.get('hc'), cvd: !!q.get('cvd') } as Cfg
+  cfg: { updates: true, age: 3, bin: true, restore: true, dry: false, weekly: false, day: 'SUN', time: '21:00', excludes: [] as string[], hc: !!q.get('hc'), cvd: !!q.get('cvd') } as Cfg
 };
 
 let toastTimer = 0;
@@ -96,6 +98,7 @@ function set(patch: Partial<typeof S>) {
   }
   if (sched(S.cfg) !== sched(weeklyBefore)) setWeekly(S.cfg.weekly, S.cfg.day, S.cfg.time).catch(() => set({ cfg: { ...S.cfg, weekly: weeklyBefore.weekly, day: weeklyBefore.day, time: weeklyBefore.time } }));
   if (S.cfg.excludes !== weeklyBefore.excludes) doScan();
+  if (S.cfg.updates !== weeklyBefore.updates) checkUpdate();
 }
 async function loadSettings() {
   const saved = await settingsLoad();
@@ -209,6 +212,13 @@ async function undoStartup() {
   set({ stBusy: true });
   reloadStartup(await startupUndo(), 'tUndone');
 }
+
+async function checkUpdate() {
+  if (!S.cfg.updates) return set({ update: null });
+  const rel = await latestRelease();
+  set({ update: rel && S.version && isNewer(rel.version, S.version) ? rel : null });
+}
+setInterval(checkUpdate, 12 * 3600000);
 
 async function refreshLive() {
   const l = await liveStats();
@@ -347,6 +357,7 @@ function view() {
   const pend = Object.keys(stC).filter((k) => stC[k] !== stA[k]).length;
   const heavyOn = startupApps().filter((a) => stA[a.id] && a.impact !== 'Low').length;
   const tips: { icon: string; title: string; sub: string; fn: () => void }[] = [];
+  if (S.update) tips.push({ icon: 'M12 4v11 M7.5 10.5L12 15l4.5-4.5 M5 19h14', title: tr('tipUpdate', { v: S.update.version }), sub: tr('tipUpdateSub'), fn: () => openUrl(S.update!.url) });
   if (heavyOn > 0) tips.push({ icon: 'M12 3.5v7.5 M7 6.5a7.5 7.5 0 1 0 10 0', title: tr('tipStartup', { n: heavyOn }), sub: tr('tipStartupSub', { n: boot(stA) - 16 }), fn: () => set({ view: 'startup' }) });
   if (upDays >= 7 || pendingReboot) tips.push({ icon: 'M20 11a8 8 0 1 1-2.3-5.7 M20 4v4h-4', title: tr('tipRestart'), sub: tr('tipRestartSub', { n: upDays }) + (pendingReboot ? tr('tipUpd') : ''), fn: () => toast('tRemind') });
   if (vd && vd.size >= 4 * 2 ** 30 && !S.tasks.some((t) => t.path === vd.path)) tips.push({ icon: 'M5 6h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z M3 13h18', title: tr('tipWsl'), sub: tr('tipWslSub', { x: fmt(vd.size) }), fn: () => queueDisk(vd) });
@@ -642,6 +653,7 @@ function view() {
           <div class="fld"><span class="fl">${tr('motion')}</span>${seg([['full', tr('smooth')], ['reduced', tr('reduced')]], S.motion, (v) => set({ motion: v }))}</div>
           <div class="fld"><span class="fl">${tr('tempOlder')}</span>${seg([['1', tr('d1')], ['3', tr('d3')], ['7', tr('d7')], ['30', tr('d30')]], cfg.age, (v) => setCfg('age', Number(v)))}</div>
           <div class="list">
+            ${tgl('updates', 'updates', 'updatesSub')}
             ${tgl('restore', 'restore', 'restoreSub')}
             ${tgl('dry', 'dry', 'drySub')}
             ${tgl('hc', 'hc', 'hcSub')}
@@ -660,7 +672,7 @@ function view() {
       </div>
       <div style="display: flex; align-items: center; gap: 12px; padding-top: 16px; border-top: 1px solid var(--sep)">
         <svg width="44" height="44" viewBox="0 0 256 256" aria-hidden="true" style="flex: none; overflow: visible"><use href=${logoHref}></use></svg>
-        <div><div style="font-size: 15px; font-weight: 600">Sweepr</div><div class="t3" style="font-size: 12px">${tr('version')}</div></div>
+        <div><div style="font-size: 15px; font-weight: 600">Sweepr</div><div class="t3" style="font-size: 12px">${tr('version', { v: S.version })}${S.update ? html` · <span style="color: var(--accent-text)">${tr('tipUpdate', { v: S.update.version })}</span>` : nothing}</div></div>
       </div>
     </div>
   </div>`;
@@ -706,7 +718,9 @@ function draw() {
 addEventListener('keydown', (e) => { if (e.key === 'Escape' && S.confirm) set({ confirm: false }); });
 if ('__TAURI_INTERNALS__' in window) document.documentElement.classList.add('tauri');
 await loadSettings();
+S.version = await appVersion();
 draw();
+checkUpdate();
 
 // Tray menu actions. Quick clean opens the confirm sheet; nothing is deleted without it.
 onTray((a) => {

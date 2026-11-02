@@ -262,6 +262,7 @@ fn main() {
         .plugin(tauri_plugin_window_state::Builder::default().with_state_flags(tauri_plugin_window_state::StateFlags::POSITION).build())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_opener::init())
         .manage(App::default())
         // Closing hides to the tray; Quit in the tray menu exits.
         .on_window_event(|w, e| {

@@ -172,6 +172,44 @@ export async function onTray(fn: (action: string) => void) {
   await listen<string>('tray', (e) => fn(e.payload));
 }
 
+// ---------- version and update check (the only network call; can be turned off in Settings) ----------
+export const REPO = 'rom5n/sweepr';
+
+export async function appVersion(): Promise<string> {
+  if (!IN_TAURI) return '2026.0.2';
+  const { getVersion } = await import('@tauri-apps/api/app');
+  return getVersion();
+}
+
+/** Latest published (non-draft, non-prerelease) GitHub release, or null when offline / none. */
+export async function latestRelease(): Promise<{ version: string; url: string } | null> {
+  if (!IN_TAURI) return null;
+  try {
+    const r = await fetch(`https://api.github.com/repos/${REPO}/releases/latest`, { headers: { Accept: 'application/vnd.github+json' } });
+    if (!r.ok) return null;
+    const j = await r.json();
+    return { version: String(j.tag_name).replace(/^v/, ''), url: String(j.html_url) };
+  } catch {
+    return null;
+  }
+}
+
+/** True when version a is newer than b (numeric dotted compare, "2026.0.10" > "2026.0.9"). */
+export function isNewer(a: string, b: string): boolean {
+  const pa = a.split(/[.-]/).map((x) => parseInt(x, 10) || 0);
+  const pb = b.split(/[.-]/).map((x) => parseInt(x, 10) || 0);
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    if ((pa[i] || 0) !== (pb[i] || 0)) return (pa[i] || 0) > (pb[i] || 0);
+  }
+  return false;
+}
+
+export async function openUrl(url: string) {
+  if (!IN_TAURI) return void window.open(url, '_blank');
+  const { openUrl } = await import('@tauri-apps/plugin-opener');
+  await openUrl(url);
+}
+
 let mockRam = 18.4 * 2 ** 30;
 let mockCpu = 14;
 export async function liveStats(): Promise<Live> {
