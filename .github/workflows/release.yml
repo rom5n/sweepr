@@ -42,6 +42,12 @@ jobs:
       - name: Typecheck
         run: npx tsc --noEmit
 
+      # The installer bundles the elevated helper from target/release; tauri-build checks
+      # that resource exists at compile time, so build it before anything else in src-tauri.
+      - name: Build helper
+        working-directory: src-tauri
+        run: cargo build --release -p sweepr-helper
+
       # Failed tests also show as annotations on the run page (job logs need sign-in to read).
       - name: Rust tests
         working-directory: src-tauri
@@ -51,11 +57,6 @@ jobs:
           s=${PIPESTATUS[0]}
           grep -A1 "panicked at" test.log | grep -v '^--$' | paste -d' ' - - | sed 's/^/::error::/'
           exit $s
-
-      # The installer bundles the elevated helper from target/release.
-      - name: Build helper
-        working-directory: src-tauri
-        run: cargo build --release -p sweepr-helper
 
       - name: Build installer
         run: npx tauri build
