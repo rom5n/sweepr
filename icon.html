@@ -1,0 +1,12 @@
+<!doctype html>
+<!-- Dev-only: dumps logo SVGs for icon generation (scripts/make-icons). Not part of the build. -->
+<html><head><meta charset="utf-8"></head><body>
+<script type="module">
+import { logoSvg } from '/src/logo.ts';
+for (const [dark, small] of [[false, false], [false, true], [true, false], [true, true]]) {
+  const t = document.createElement('textarea');
+  t.id = `logo-${dark ? 'dark' : 'light'}-${small ? 'small' : 'full'}`;
+  t.textContent = logoSvg(dark, small);
+  document.body.appendChild(t);
+}
+</script></body></html>

@@ -1,0 +1,25 @@
+<!doctype html>
+<!-- Dev-only contact sheet of UI variants (not part of the build). Open /gallery.html?set=<name> -->
+<html><head><meta charset="utf-8"><title>Sweepr variants</title>
+<style>
+  body{margin:0;background:#9a9a9f;font:13px system-ui;display:flex;flex-wrap:wrap;gap:8px;padding:8px;width:1640px}
+  figure{margin:0;width:400px}
+  figcaption{color:#fff;padding:2px 4px 4px;white-space:nowrap}
+  iframe{width:400px;height:760px;border:0;display:block}
+</style></head><body><script>
+const dk = (o) => ({ ...o, theme: 'dark' }), lt = (o) => ({ ...o, theme: 'light' });
+const SETS = {
+  palettes: ['bright','pastel','mono'].flatMap(palette=>[dk({palette}),lt({palette})]).concat([dk({cvd:1}),lt({hc:1})]),
+  seeds: ['blue','violet','green','orange','pink','teal'].map((seed,i)=>(i%2?lt:dk)({seed,startView:'settings'})).concat([dk({seed:'green'}),lt({seed:'pink'})]),
+  charts: ['squircle','round','bars','waffle'].flatMap(chart=>[dk({chart}),lt({chart,palette:'pastel'})]),
+  corners: ['mixed','round','sharp'].flatMap(corners=>[dk({corners}),lt({corners,startView:'review'})]).concat([dk({corners:'round',chart:'round'}),lt({corners:'sharp',demo:'confirm'})]),
+  langs: ['en','ru','es','zh'].flatMap(lang=>[dk({lang}),lt({lang,startView:'review'})]),
+  screens: [dk({}),dk({startView:'review'}),dk({demo:'confirm'}),dk({demo:'running'}),dk({demo:'done'}),dk({startView:'startup'}),dk({startView:'settings'}),dk({startView:'settings',adv:1})],
+};
+const set = SETS[new URLSearchParams(location.search).get('set') || 'screens'];
+for (const p of set) {
+  const f = document.createElement('figure');
+  f.innerHTML = `<figcaption>${Object.entries(p).map(([k,v])=>k+'='+v).join('  ')}</figcaption><iframe src="/?${new URLSearchParams(p)}"></iframe>`;
+  document.body.appendChild(f);
+}
+</script></body></html>

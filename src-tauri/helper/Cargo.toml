@@ -1,0 +1,17 @@
+[package]
+name = "sweepr-helper"
+version = "0.1.0"
+edition = "2021"
+description = "Sweepr elevated helper: runs allow-listed admin jobs for one batch, then exits"
+
+[dependencies]
+sweepr-core = { path = "../core" }
+serde_json = "1.0.154"
+windows = { version = "0.62", features = ["Win32_Foundation", "Win32_System_Restore"] }
+windows-registry = "0.6"
+
+# The requireAdministrator manifest also lands on the test binary; the helper's logic is tested in core.
+[[bin]]
+name = "sweepr-helper"
+path = "src/main.rs"
+test = false

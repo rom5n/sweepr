@@ -1,0 +1,33 @@
+/* Window shell. The design's .sw root is 400×760 with a 16px "desk" margin around the panel.
+   In Tauri the window is transparent, so the margin is see-through and the panel keeps its shadow. */
+html, body { margin: 0; height: 100%; overflow: hidden; }
+html.tauri, html.tauri body { background: transparent; }
+.sw { box-sizing: border-box; width: 400px; height: 760px; padding: 16px; display: flex; }
+html.tauri .sw { background: transparent; }
+.win { position: relative; flex: 1; display: flex; flex-direction: column; background: var(--bg); border-radius: var(--r-win); box-shadow: 0 0 0 1px var(--win-edge), 0 24px 60px -24px rgba(0,0,0,.55); overflow: hidden; }
+html.tauri .win { box-shadow: 0 0 0 1px var(--win-edge), 0 6px 14px -6px rgba(0,0,0,.5); }
+.sw [lang="zh"], .sw:lang(zh) { font-family: 'Noto Sans SC Variable', 'Noto Sans SC', 'Golos Text Variable', 'Microsoft YaHei', sans-serif; }
+@media (prefers-reduced-motion: reduce) { .sw *, .sw *::before, .sw *::after { animation: none !important; transition: none !important; } }
+
+/* Text is not selectable, except fields the user types in. */
+.sw { -webkit-user-select: none; user-select: none; cursor: default; }
+.sw input { -webkit-user-select: text; user-select: text; }
+
+/* Segmented controls: one thumb slides to the chosen option. */
+.seg.slide { position: relative; }
+.seg.slide { --w: calc((100% - 4px - (var(--n) - 1) * 2px) / var(--n)); }
+.seg.slide .thumb { position: absolute; top: 2px; bottom: 2px; left: calc(2px + var(--i) * (var(--w) + 2px)); right: calc(2px + (var(--n) - 1 - var(--i)) * (var(--w) + 2px)); background: var(--seg-on); box-shadow: 0 1px 2px rgba(0,0,0,.14); border-radius: max(0px, calc(var(--r-ctl) - 2px)); }
+/* Stretch: the leading edge springs ahead (slight overshoot), the trailing edge catches up a moment later. */
+.seg.slide[data-dir="r"] .thumb { transition: right .26s cubic-bezier(.34, 1.4, .64, 1), left .34s cubic-bezier(.6, 0, .2, 1) .07s; }
+.seg.slide[data-dir="l"] .thumb { transition: left .26s cubic-bezier(.34, 1.4, .64, 1), right .34s cubic-bezier(.6, 0, .2, 1) .07s; }
+.seg.slide button { position: relative; z-index: 1; }
+.seg.slide button.on { background: transparent; box-shadow: none; }
+
+/* Time field for the auto-clean schedule. */
+.tm { font: inherit; font-size: 13px; color: var(--text); background: var(--fill2); border: 0; border-radius: var(--r-ctl); height: 32px; padding: 0 8px; }
+.tm:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+/* Font choice (Settings > Look). Chinese keeps Noto Sans SC. */
+.sw.f-inter { font-family: 'Inter Variable', 'Noto Sans SC Variable', 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif; }
+.sw.f-manrope { font-family: 'Manrope Variable', 'Noto Sans SC Variable', 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif; }
+.sw.f-plex { font-family: 'IBM Plex Sans Variable', 'Noto Sans SC Variable', 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif; }
